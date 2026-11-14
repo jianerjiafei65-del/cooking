@@ -3,89 +3,11 @@
 
   const STORAGE_KEY = "ouchi-recipes-v1";
 
-  /* ===== サンプルデータ ===== */
-  const SAMPLE_RECIPES = [
-    {
-      id: "sample_nikujaga",
-      name: "肉じゃが",
-      servings: 2,
-      ingredients: [
-        { name: "じゃがいも", amount: 300, unit: "g" },
-        { name: "牛こま切れ肉", amount: 150, unit: "g" },
-        { name: "玉ねぎ", amount: 1, unit: "個" },
-        { name: "にんじん", amount: 0.5, unit: "本" },
-        { name: "しょうゆ", amount: 2, unit: "大さじ" },
-        { name: "砂糖", amount: 1.5, unit: "大さじ" },
-        { name: "みりん", amount: 2, unit: "大さじ" },
-        { name: "だし汁", amount: 300, unit: "ml" }
-      ],
-      nutrition: { kcal: 820, protein: 34, fat: 30, carbs: 98, salt: 5.2 },
-      steps: [
-        "じゃがいもは一口大、玉ねぎはくし切り、にんじんは乱切りにする。",
-        "鍋に油を熱し、牛肉を炒めて色が変わったら野菜を加えて炒める。",
-        "だし汁・砂糖・みりんを加え、落としぶたをして10分煮る。",
-        "しょうゆを加え、じゃがいもが柔らかくなるまでさらに10分煮る。"
-      ]
-    },
-    {
-      id: "sample_oyakodon",
-      name: "親子丼",
-      servings: 2,
-      ingredients: [
-        { name: "鶏もも肉", amount: 200, unit: "g" },
-        { name: "卵", amount: 3, unit: "個" },
-        { name: "玉ねぎ", amount: 0.5, unit: "個" },
-        { name: "ごはん", amount: 400, unit: "g" },
-        { name: "めんつゆ（3倍濃縮）", amount: 3, unit: "大さじ" },
-        { name: "水", amount: 100, unit: "ml" },
-        { name: "三つ葉", amount: null, unit: "" }
-      ],
-      nutrition: { kcal: 1360, protein: 62, fat: 38, carbs: 178, salt: 4.4 },
-      steps: [
-        "鶏肉は一口大、玉ねぎは薄切りにする。",
-        "小さめのフライパンに水とめんつゆを入れて煮立て、鶏肉と玉ねぎを煮る。",
-        "鶏肉に火が通ったら溶き卵を回し入れ、半熟でふたをして火を止める。",
-        "ごはんにのせ、三つ葉を添える。"
-      ]
-    },
-    {
-      id: "sample_salad",
-      name: "アボカドとトマトのサラダ",
-      servings: 2,
-      ingredients: [
-        { name: "アボカド", amount: 1, unit: "個" },
-        { name: "ミニトマト", amount: 8, unit: "個" },
-        { name: "オリーブオイル", amount: 1, unit: "大さじ" },
-        { name: "レモン汁", amount: 2, unit: "小さじ" },
-        { name: "塩", amount: 0.5, unit: "g" },
-        { name: "黒こしょう", amount: null, unit: "" }
-      ],
-      nutrition: { kcal: 420, protein: 5, fat: 38, carbs: 18, salt: 0.6 },
-      steps: [
-        "アボカドとミニトマトを食べやすい大きさに切る。",
-        "オリーブオイル・レモン汁・塩を混ぜてドレッシングを作る。",
-        "ボウルで全体をさっくり和え、黒こしょうをふる。"
-      ]
-    },
-    {
-      id: "sample_misosoup",
-      name: "豆腐とわかめの味噌汁",
-      servings: 2,
-      ingredients: [
-        { name: "絹ごし豆腐", amount: 150, unit: "g" },
-        { name: "乾燥わかめ", amount: 2, unit: "g" },
-        { name: "長ねぎ", amount: 10, unit: "cm" },
-        { name: "だし汁", amount: 400, unit: "ml" },
-        { name: "味噌", amount: 2, unit: "大さじ" }
-      ],
-      nutrition: { kcal: 140, protein: 11, fat: 6, carbs: 10, salt: 3.0 },
-      steps: [
-        "豆腐はさいの目切り、長ねぎは小口切りにする。",
-        "だし汁を温め、豆腐とわかめを入れる。",
-        "火を弱めて味噌を溶き入れ、長ねぎを加えて沸騰直前で火を止める。"
-      ]
-    }
-  ];
+  /* ===== サンプルデータ（samples.js） ===== */
+  const SAMPLE_RECIPES = window.SAMPLE_RECIPES || [];
+  const SEEDED_KEY = "ouchi-recipes-seeded-v1";
+  // 最初のバージョンから入っていたサンプル（以前から使っている人の判定用）
+  const ORIGINAL_SAMPLE_IDS = ["sample_nikujaga", "sample_oyakodon", "sample_salad", "sample_misosoup"];
 
   /* ===== 状態 ===== */
   let recipes = load();
@@ -113,14 +35,38 @@
 
   /* ===== 保存・読込 ===== */
   function load() {
+    let data = null;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const data = JSON.parse(raw);
-        if (Array.isArray(data)) return data;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) data = parsed;
       }
     } catch (e) { /* 読み込めない場合はサンプルを使う */ }
-    return structuredClone(SAMPLE_RECIPES);
+    if (!data) {
+      markSeeded(SAMPLE_RECIPES.map((r) => r.id));
+      return structuredClone(SAMPLE_RECIPES);
+    }
+    return addNewSamples(data);
+  }
+
+  // 新しく追加されたサンプルだけを既存データに加える（削除したサンプルは戻さない）
+  function addNewSamples(data) {
+    let seeded;
+    try { seeded = JSON.parse(localStorage.getItem(SEEDED_KEY) || "null"); } catch (e) { seeded = null; }
+    if (!Array.isArray(seeded)) seeded = ORIGINAL_SAMPLE_IDS;
+    const have = new Set(data.map((r) => r.id));
+    const added = SAMPLE_RECIPES.filter((r) => !seeded.includes(r.id) && !have.has(r.id));
+    if (added.length) {
+      data = data.concat(structuredClone(added));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { /* 保存できなくても表示は続ける */ }
+    }
+    markSeeded(SAMPLE_RECIPES.map((r) => r.id));
+    return data;
+  }
+
+  function markSeeded(ids) {
+    try { localStorage.setItem(SEEDED_KEY, JSON.stringify(ids)); } catch (e) { /* noop */ }
   }
 
   function save() {
@@ -241,7 +187,7 @@
       return `
         <li>
           <button class="card" data-id="${escapeHtml(r.id)}">
-            <span class="card-emoji" aria-hidden="true">${guessEmoji(r.name)}</span>
+            <span class="card-emoji" aria-hidden="true">${r.emoji || guessEmoji(r.name)}</span>
             <span class="card-body">
               <p class="card-title">${escapeHtml(r.name)}</p>
               <span class="card-meta">
@@ -288,7 +234,7 @@
     el.detailView.innerHTML = `
       <div class="detail">
         <div class="hero">
-          <div class="hero-emoji" aria-hidden="true">${guessEmoji(r.name)}</div>
+          <div class="hero-emoji" aria-hidden="true">${r.emoji || guessEmoji(r.name)}</div>
           <h2>${escapeHtml(r.name)}</h2>
         </div>
 
@@ -773,7 +719,10 @@
     ["kcal", "protein", "fat", "carbs", "salt"].forEach((k) => { nutrition[k] = num(f[k].value); });
 
     const id = el.form.dataset.id || `r_${Date.now()}`;
+    const prev = findRecipe(id);
     const recipe = { id, name, servings, ingredients, nutrition, steps };
+    // 料理名を変えていなければ、元の絵文字を引き継ぐ
+    if (prev?.emoji && prev.name === name) recipe.emoji = prev.emoji;
 
     const idx = recipes.findIndex((r) => r.id === id);
     if (idx >= 0) recipes[idx] = recipe; else recipes.unshift(recipe);
