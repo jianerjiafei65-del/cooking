@@ -269,11 +269,12 @@
     const fmt = (v, d = 1) => (v == null ? "—" : round(v, d));
 
     const nutriItems = [
-      ["たんぱく質", per(n.protein), "g"],
-      ["脂質", per(n.fat), "g"],
-      ["炭水化物", per(n.carbs), "g"],
-      ["食塩相当量", per(n.salt), "g"]
+      ["protein", "たんぱく質", per(n.protein), "g"],
+      ["fat", "脂質", per(n.fat), "g"],
+      ["carbs", "炭水化物", per(n.carbs), "g"],
+      ["salt", "食塩相当量", per(n.salt), "g"]
     ];
+    const recipeCtx = `「${r.name}」1人分`;
 
     // PFCバランス（エネルギー比）
     const pE = (per(n.protein) || 0) * 4;
@@ -316,16 +317,17 @@
 
         <div class="panel">
           <h3>栄養素 <small>1人分あたり</small></h3>
+          <p class="hint">栄養素をタップすると詳しい解説が見られます</p>
           <div class="nutri-grid">
-            <div class="nutri nutri-kcal">
+            <button type="button" class="nutri nutri-kcal" ${nutrientAttrs("kcal", per(n.kcal) == null ? null : round(per(n.kcal), 0), recipeCtx, true)}>
               <span class="nutri-label">エネルギー</span>
               <span class="nutri-value">${fmt(per(n.kcal), 0)}<span class="nutri-unit">kcal</span></span>
-            </div>
-            ${nutriItems.map(([label, v, unit]) => `
-              <div class="nutri">
+            </button>
+            ${nutriItems.map(([id, label, v, unit]) => `
+              <button type="button" class="nutri" ${nutrientAttrs(id, v == null ? null : round(v), recipeCtx, true)}>
                 <span class="nutri-label">${label}</span>
                 <span class="nutri-value">${fmt(v)}<span class="nutri-unit">${unit}</span></span>
-              </div>`).join("")}
+              </button>`).join("")}
           </div>
           ${totalKcal != null ? `<p class="nutri-total">${viewServings}人分の合計：${totalKcal} kcal</p>` : ""}
           ${sum ? `
@@ -362,6 +364,8 @@
     if (!r) return;
     const ing = e.target.closest(".ing-item");
     if (ing) { openIngredientInfo(r, Number(ing.dataset.idx)); return; }
+    const nut = e.target.closest("[data-nid]");
+    if (nut) { openNutrientFromEl(nut, r, false); return; }
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
@@ -437,8 +441,13 @@
         </div>
 
         <div class="info-section">
-          <h3>主な栄養素</h3>
-          <div class="tags">${info.highlights.map((h) => `<span class="tag">${escapeHtml(h)}</span>`).join("")}</div>
+          <h3>主な栄養素 <small>タップで詳しい解説</small></h3>
+          <div class="tags">${info.highlights.map((h) => {
+            const nid = findNutrientIndex(h);
+            return nid < 0
+              ? `<span class="tag tag-plain">${escapeHtml(h)}</span>`
+              : `<button type="button" class="tag" data-nid="${nid}">${escapeHtml(h)}</button>`;
+          }).join("")}</div>
         </div>
 
         <div class="info-section">
@@ -449,12 +458,12 @@
         ${grams != null ? `
         <div class="info-section">
           <h3>このレシピでの量（${viewServings}人分：${escapeHtml(amountText)}${ing.unit === "g" ? "" : ` ≒ ${Math.round(grams)}g`}）</h3>
-          ${miniGrid({ kcal: scaled(p.kcal, 0), protein: scaled(p.protein), fat: scaled(p.fat), carbs: scaled(p.carbs), salt: scaled(p.salt) })}
+          ${miniGrid({ kcal: scaled(p.kcal, 0), protein: scaled(p.protein), fat: scaled(p.fat), carbs: scaled(p.carbs), salt: scaled(p.salt) }, `「${ing.name}」${amountText}（${viewServings}人分）`)}
         </div>` : ""}
 
         <div class="info-section">
           <h3>100gあたり</h3>
-          ${miniGrid(p)}
+          ${miniGrid(p, `${info.name}100gあたり`)}
         </div>
 
         <div class="info-section">
@@ -464,13 +473,10 @@
         <p class="info-note">※数値は日本食品標準成分表（八訂）をもとにした目安です。品種・部位・調理法によって変わります。</p>`;
     }
 
-    infoBody.innerHTML = html;
-    if (typeof infoSheet.showModal === "function") infoSheet.showModal();
-    else infoSheet.setAttribute("open", "");
-    infoSheet.scrollTop = 0;
+    showSheet(html, false);
   }
 
-  function miniGrid(n) {
+  function miniGrid(n, ctx) {
     const items = [
       ["エネルギー", n.kcal, "kcal", true],
       ["たんぱく質", n.protein, "g"],
@@ -478,12 +484,168 @@
       ["炭水化物", n.carbs, "g"],
       ["食塩", n.salt, "g"]
     ];
-    return `<div class="mini-grid">${items.map(([label, v, unit, main]) => `
-      <div class="mini${main ? " mini-kcal" : ""}"><b>${v}</b><span>${label}<br>(${unit})</span></div>`).join("")}</div>`;
+    const ids = ["kcal", "protein", "fat", "carbs", "salt"];
+    return `<div class="mini-grid">${items.map(([label, v, unit, main], i) => `
+      <button type="button" class="mini${main ? " mini-kcal" : ""}" ${nutrientAttrs(ids[i], v, ctx)}><b>${v}</b><span>${label}<br>(${unit})</span></button>`).join("")}</div>`;
+  }
+
+  /* ===== 栄養素の解説 ===== */
+  const NUTRIENTS = window.NUTRIENT_INFO || [];
+  const MACRO_IDS = ["kcal", "protein", "fat", "carbs", "salt"];
+
+  // タグの文字列にもっとも長く一致する栄養素を探す（見つからなければ -1）
+  function findNutrientIndex(text) {
+    let best = -1, bestLen = 0;
+    NUTRIENTS.forEach((nu, idx) => {
+      for (const key of nu.keys) {
+        if (key.length > bestLen && text.includes(key)) { best = idx; bestLen = key.length; }
+      }
+    });
+    return best;
+  }
+
+  // 栄養素ボタンに付ける data 属性（id: kcal など、value: その文脈での量）
+  function nutrientAttrs(id, value, ctx, fromRecipe = false) {
+    const idx = NUTRIENTS.findIndex((nu) => nu.id === id);
+    if (idx < 0) return "";
+    const label = NUTRIENTS[idx].name;
+    return `data-nid="${idx}"${value != null ? ` data-val="${value}"` : ""} data-ctx="${escapeHtml(ctx || "")}"${fromRecipe ? ` data-recipe="1"` : ""} aria-label="${label}の解説を見る"`;
+  }
+
+  function openNutrientFromEl(elm, r, push) {
+    const nu = NUTRIENTS[Number(elm.dataset.nid)];
+    if (!nu) return;
+    const val = elm.dataset.val != null ? Number(elm.dataset.val) : null;
+    openNutrientInfo(nu, { value: val, ctx: elm.dataset.ctx, recipe: elm.dataset.recipe ? r : null }, push);
+  }
+
+  // レシピの材料から、その栄養素を多く含む材料を推定（1人分）
+  function contributors(r, id) {
+    const list = [];
+    r.ingredients.forEach((ing, idx) => {
+      const info = findIngredientInfo(ing.name);
+      if (!info) return;
+      const g = toGrams(info, ing.amount, ing.unit);
+      if (g == null) return;
+      const v = (info.per100[id] * g) / 100 / r.servings;
+      if (v > 0) list.push({ idx, name: ing.name, v });
+    });
+    return list.sort((a, b) => b.v - a.v).slice(0, 3);
+  }
+
+  function openNutrientInfo(nu, { value = null, ctx = "", recipe = null } = {}, push = true) {
+    const unit = nu.dv?.unit || (nu.id === "kcal" ? "kcal" : "g");
+    let amountBox = "";
+    if (value != null && ctx) {
+      const pct = nu.dv ? Math.round((value / nu.dv.value) * 100) : null;
+      amountBox = `
+        <div class="dv-box">
+          <p class="dv-label">${escapeHtml(ctx)}</p>
+          <p class="dv-value">${value}<small>${unit}</small></p>
+          ${pct != null ? `
+            <div class="dv-bar" role="img" aria-label="1日の基準値の約${pct}%"><span style="width:${Math.min(pct, 100)}%"></span></div>
+            <p class="dv-note">1日の基準値（${nu.dv.value.toLocaleString()}${unit}）の <b>約${pct}%</b>${nu.id === "salt" ? "（少ないほどよい）" : ""}</p>` : ""}
+        </div>`;
+    }
+
+    let contribHtml = "";
+    if (recipe && MACRO_IDS.includes(nu.id)) {
+      const list = contributors(recipe, nu.id);
+      if (list.length) {
+        const max = list[0].v;
+        contribHtml = `
+        <div class="info-section">
+          <h3>このレシピで多く含む材料 <small>1人分・推定</small></h3>
+          <ul class="contrib">${list.map((c) => `
+            <li>
+              <button type="button" class="contrib-item" data-ing-idx="${c.idx}">
+                <span class="contrib-name">${escapeHtml(c.name)}</span>
+                <span class="contrib-bar"><span style="width:${Math.max(6, (c.v / max) * 100)}%"></span></span>
+                <span class="contrib-val">${round(c.v, nu.id === "kcal" ? 0 : 1)}${unit}</span>
+              </button>
+            </li>`).join("")}
+          </ul>
+        </div>`;
+      }
+    }
+
+    const html = `
+      <div class="info-head">
+        <div class="info-emoji" aria-hidden="true">${nu.emoji}</div>
+        <div>
+          <h2 id="infoTitle">${escapeHtml(nu.name)}とは</h2>
+          <p class="info-sub">${escapeHtml(nu.category)}</p>
+        </div>
+      </div>
+      <p class="lead">${escapeHtml(nu.summary)}</p>
+      ${amountBox}
+      ${contribHtml}
+      <div class="info-section">
+        <h3>体での働き</h3>
+        <p>${escapeHtml(nu.role)}</p>
+      </div>
+      <div class="info-section two-col">
+        <div class="caution caution-lack">
+          <h3>不足すると</h3>
+          <p>${escapeHtml(nu.lack)}</p>
+        </div>
+        <div class="caution caution-excess">
+          <h3>とりすぎると</h3>
+          <p>${escapeHtml(nu.excess)}</p>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>1日の目安（成人）</h3>
+        <p>${escapeHtml(nu.daily)}</p>
+      </div>
+      <div class="info-section">
+        <h3>多く含む食品</h3>
+        <div class="tags">${nu.foods.map((f) => `<span class="tag tag-plain">${escapeHtml(f)}</span>`).join("")}</div>
+      </div>
+      <div class="info-section">
+        <p class="tip">${escapeHtml(nu.tip)}</p>
+      </div>
+      <p class="info-note">※1日の目安は「日本人の食事摂取基準」、基準値は食品表示基準の栄養素等表示基準値をもとにしたおおよその値です。年齢・性別・体格・活動量によって変わります。</p>`;
+
+    showSheet(html, push);
   }
 
   const infoSheet = $("#infoSheet");
   const infoBody = $("#infoBody");
+  let sheetStack = []; // 解説シートの表示履歴（戻るボタン用）
+
+  function renderSheet() {
+    const html = sheetStack[sheetStack.length - 1];
+    infoBody.innerHTML = (sheetStack.length > 1
+      ? `<button type="button" class="sheet-back" data-sheet-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>戻る</button>`
+      : "") + html;
+    infoSheet.scrollTop = 0;
+  }
+
+  function showSheet(html, push) {
+    if (push && infoSheet.open) sheetStack.push(html); else sheetStack = [html];
+    renderSheet();
+    if (!infoSheet.open) {
+      if (typeof infoSheet.showModal === "function") infoSheet.showModal();
+      else infoSheet.setAttribute("open", "");
+    }
+  }
+
+  // シート内のボタン（戻る・栄養素・材料）
+  infoBody.addEventListener("click", (e) => {
+    const r = findRecipe(el.detailView.dataset.id);
+    if (e.target.closest("[data-sheet-back]")) { sheetStack.pop(); renderSheet(); return; }
+    const nut = e.target.closest("[data-nid]");
+    if (nut) { openNutrientFromEl(nut, r, true); return; }
+    const ingBtn = e.target.closest("[data-ing-idx]");
+    if (ingBtn && r) {
+      const prev = sheetStack.slice();
+      openIngredientInfo(r, Number(ingBtn.dataset.ingIdx));
+      sheetStack = [...prev, ...sheetStack]; // 履歴を残したまま材料の解説へ
+      renderSheet();
+    }
+  });
+
   function closeInfo() {
     if (typeof infoSheet.close === "function") infoSheet.close();
     else infoSheet.removeAttribute("open");
