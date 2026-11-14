@@ -232,9 +232,9 @@
     const filtered = currentTab === "all" ? matched : matched.filter((r) => getCategory(r) === currentTab);
     const tabLabel = currentTab === "all" ? "" : `${categoryLabel(currentTab)}：`;
 
-    el.count.textContent = q
+    el.count.textContent = (q
       ? `${tabLabel}${filtered.length}件 / 全${recipes.length}件`
-      : `${tabLabel}${filtered.length}件のレシピ`;
+      : `${tabLabel}${filtered.length}件のレシピ`) + (preferredServings ? `（${preferredServings}人分で表示）` : "");
     el.empty.hidden = filtered.length > 0;
     el.empty.textContent = recipes.length === 0
       ? "レシピがまだありません。右下の ＋ から追加しましょう。"
@@ -253,7 +253,7 @@
               <span class="card-meta">
                 ${currentTab === "all" ? `<span class="chip chip-cat">${categoryLabel(getCategory(r))}</span>` : ""}
                 ${perKcal !== null ? `<span class="chip chip-accent">${perKcal} kcal/人</span>` : ""}
-                <span class="chip">${r.servings}人分</span>
+                <span class="chip${preferredServings ? " chip-serv" : ""}">${preferredServings ?? r.servings}人分</span>
                 <span class="chip">材料 ${r.ingredients.length}品</span>
               </span>
             </span>
