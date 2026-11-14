@@ -55,7 +55,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  font-family: "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", "YuMincho", "Noto Serif JP", "BIZ UDPMincho", "MS PMincho", serif;
   line-height: 1.6;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
@@ -63,6 +63,7 @@ body {
 
 svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 button { font: inherit; color: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; }
 [hidden] { display: none !important; }
 
 main {
