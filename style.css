@@ -309,6 +309,7 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
   display: grid; place-items: center;
   background: var(--accent); color: #fff; font-size: .85rem; font-weight: 700;
 }
+.steps .qty { margin-left: 2px; color: var(--accent); font-weight: 700; white-space: nowrap; }
 .muted { color: var(--muted); margin: 0; }
 
 .detail-actions { display: flex; gap: 10px; }

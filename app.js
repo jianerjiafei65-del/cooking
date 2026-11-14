@@ -96,14 +96,30 @@
     let seeded;
     try { seeded = JSON.parse(localStorage.getItem(SEEDED_KEY) || "null"); } catch (e) { seeded = null; }
     if (!Array.isArray(seeded)) seeded = ORIGINAL_SAMPLE_IDS;
+    // 内容を変えていないサンプルの作り方を、分量入りの新しい作り方に更新
+    const oldHashes = window.SAMPLE_OLD_STEP_HASHES || {};
+    let updated = false;
+    data = data.map((r) => {
+      const sample = SAMPLE_RECIPES.find((x) => x.id === r.id);
+      if (!sample || !oldHashes[r.id] || !Array.isArray(r.steps)) return r;
+      if (stepsHash(r.steps) !== oldHashes[r.id]) return r;
+      updated = true;
+      return { ...r, steps: structuredClone(sample.steps) };
+    });
     const have = new Set(data.map((r) => r.id));
     const added = SAMPLE_RECIPES.filter((r) => !seeded.includes(r.id) && !have.has(r.id));
-    if (added.length) {
+    if (added.length || updated) {
       data = data.concat(structuredClone(added));
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { /* 保存できなくても表示は続ける */ }
     }
     markSeeded(SAMPLE_RECIPES.map((r) => r.id));
     return data;
+  }
+
+  function stepsHash(steps) {
+    let x = 5381;
+    for (const ch of JSON.stringify(steps)) x = ((x * 33) ^ ch.codePointAt(0)) >>> 0;
+    return x.toString(36);
   }
 
   function markSeeded(ids) {
@@ -367,9 +383,9 @@
         </div>
 
         <div class="panel">
-          <h3>作り方</h3>
+          <h3>作り方 <small>分量は${viewServings}人分</small></h3>
           ${r.steps.length
-            ? `<ol class="steps">${r.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>`
+            ? `<ol class="steps">${r.steps.map((s) => `<li>${renderStep(s, r, factor)}</li>`).join("")}</ol>`
             : `<p class="muted">手順が登録されていません</p>`}
         </div>
 
@@ -378,6 +394,22 @@
           <button type="button" class="btn btn-primary" data-act="edit">編集する</button>
         </div>
       </div>`;
+  }
+
+  // 手順の {材料名} を「材料名＋表示人数分の分量」に置き換える（{材料名|1/2} は半量）
+  function renderStep(text, r, factor) {
+    return escapeHtml(text).replace(/\{([^{}|]+)(?:\|([^{}]+))?\}/g, (m, name, part) => {
+      const ing = r.ingredients.find((i) => escapeHtml(i.name) === name.trim());
+      if (!ing) return name;
+      let ratio = 1;
+      if (part) {
+        const [num, den] = part.split("/").map(Number);
+        ratio = den ? num / den : num;
+        if (!Number.isFinite(ratio) || ratio <= 0) ratio = 1;
+      }
+      const qty = ing.amount == null ? "適量" : formatQty(ing.amount * factor * ratio, ing.unit);
+      return `${name.trim()}<b class="qty">${escapeHtml(qty)}</b>`;
+    });
   }
 
   el.detailView.addEventListener("click", (e) => {
