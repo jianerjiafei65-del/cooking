@@ -42,7 +42,9 @@
   let recipes = load();
   let viewServings = null; // 詳細画面で表示中の人数
   const SERVINGS_KEY = "ouchi-recipes-servings";
+  const MAX_SERVINGS = 4;
   const QUICK_SERVINGS = [1, 2, 3, 4];
+  const clampServings = (n) => Math.min(MAX_SERVINGS, Math.max(1, Math.round(n)));
   // 1〜4人の切替ボタンで選んだ人数（どのレシピにも適用）
   let preferredServings = null;
   try {
@@ -265,7 +267,7 @@
     setHeader(r.name, true);
     el.add.hidden = true;
     el.detailView.hidden = false;
-    if (viewServings === null || el.detailView.dataset.id !== r.id) viewServings = preferredServings ?? r.servings;
+    if (viewServings === null || el.detailView.dataset.id !== r.id) viewServings = preferredServings ?? clampServings(r.servings);
     el.detailView.dataset.id = r.id;
 
     const factor = viewServings / r.servings;
@@ -292,31 +294,32 @@
 
     el.detailView.innerHTML = `
       <div class="detail">
+        <div class="serv-bar">
+          <div class="serv-row">
+            <span class="serv-title" id="servLabel">人数</span>
+            <div class="serv-seg" role="radiogroup" aria-labelledby="servLabel">
+              ${QUICK_SERVINGS.map((n) => `
+                <button type="button" class="serv-btn" role="radio" data-serv="${n}" aria-checked="${n === viewServings}">${n}人</button>`).join("")}
+            </div>
+            <label class="serv-input">
+              <input type="number" id="servInput" min="1" max="${MAX_SERVINGS}" step="1" inputmode="numeric"
+                value="${viewServings}" aria-label="人数を入力（1〜${MAX_SERVINGS}人）">
+              <span>人分</span>
+            </label>
+          </div>
+          <p class="serv-note">${
+            viewServings === r.servings
+              ? `元のレシピの分量（${r.servings}人分）`
+              : `元のレシピ（${r.servings}人分）を${viewServings}人分に換算中`
+          }</p>
+        </div>
+
         <div class="hero">
           <div class="hero-emoji" aria-hidden="true">${r.emoji || guessEmoji(r.name)}</div>
           <h2>${escapeHtml(r.name)}</h2>
           <span class="hero-cat">${categoryLabel(getCategory(r))}</span>
         </div>
 
-        <div class="panel">
-          <div class="serv-head">
-            <span class="serv-title">人数</span>
-            <output class="serv-now" aria-live="polite">${viewServings}人分</output>
-          </div>
-          <div class="serv-row">
-            <button type="button" class="serv-step" data-act="minus" aria-label="人数を減らす" ${viewServings <= 1 ? "disabled" : ""}>−</button>
-            <div class="serv-seg" role="radiogroup" aria-label="人数を切り替える">
-              ${QUICK_SERVINGS.map((n) => `
-                <button type="button" class="serv-btn" role="radio" data-serv="${n}" aria-checked="${n === viewServings}">${n}人</button>`).join("")}
-            </div>
-            <button type="button" class="serv-step" data-act="plus" aria-label="人数を増やす" ${viewServings >= 20 ? "disabled" : ""}>＋</button>
-          </div>
-          <p class="serv-note">${
-            viewServings === r.servings
-              ? `元のレシピの分量（${r.servings}人分）です`
-              : `元のレシピ（${r.servings}人分）を${viewServings}人分に換算しています`
-          }</p>
-        </div>
 
         <div class="panel">
           <h3>材料 <small>${viewServings}人分</small></h3>
@@ -386,10 +389,7 @@
     if (nut) { openNutrientFromEl(nut, r, false); return; }
     const serv = e.target.closest("[data-serv]");
     if (serv) {
-      viewServings = Number(serv.dataset.serv);
-      preferredServings = viewServings; // 次に開くレシピにも同じ人数を適用
-      try { localStorage.setItem(SERVINGS_KEY, String(viewServings)); } catch (err) { /* noop */ }
-      renderDetail(r);
+      setServings(r, Number(serv.dataset.serv));
       el.detailView.querySelector(`[data-serv="${viewServings}"]`)?.focus();
       return;
     }
@@ -397,8 +397,6 @@
     if (!btn) return;
     const act = btn.dataset.act;
 
-    if (act === "minus" && viewServings > 1) { viewServings--; renderDetail(r); }
-    if (act === "plus" && viewServings < 20) { viewServings++; renderDetail(r); }
     if (act === "edit") go(`#/edit/${r.id}`);
     if (act === "delete" && confirm(`「${r.name}」を削除しますか？`)) {
       recipes = recipes.filter((x) => x.id !== r.id);
@@ -406,6 +404,38 @@
       showToast("削除しました");
       go("#/");
     }
+  });
+
+  // 人数を変更（1〜4人）。選んだ人数は次に開くレシピにも適用
+  function setServings(r, n) {
+    viewServings = clampServings(n);
+    preferredServings = viewServings;
+    try { localStorage.setItem(SERVINGS_KEY, String(viewServings)); } catch (err) { /* noop */ }
+    renderDetail(r);
+  }
+
+  // 人数の入力欄：1〜4の数字が入ったらすぐ切り替え、範囲外は確定時に補正
+  el.detailView.addEventListener("input", (e) => {
+    if (e.target.id !== "servInput") return;
+    const r = findRecipe(el.detailView.dataset.id);
+    const v = Number(e.target.value);
+    if (!r || !Number.isInteger(v) || v < 1 || v > MAX_SERVINGS || v === viewServings) return;
+    setServings(r, v);
+    const input = el.detailView.querySelector("#servInput");
+    input.focus();
+    input.select();
+  });
+  el.detailView.addEventListener("change", (e) => {
+    if (e.target.id !== "servInput") return;
+    const r = findRecipe(el.detailView.dataset.id);
+    if (!r) return;
+    const v = Number(e.target.value);
+    if (!Number.isFinite(v) || e.target.value === "") { e.target.value = viewServings; return; }
+    if (clampServings(v) !== viewServings) setServings(r, v);
+    else e.target.value = viewServings;
+  });
+  el.detailView.addEventListener("keydown", (e) => {
+    if (e.target.id === "servInput" && e.key === "Enter") e.target.blur();
   });
 
   /* ===== 材料の栄養解説 ===== */
@@ -788,7 +818,7 @@
     }
 
     const num = (v) => (v === "" || v == null ? null : Math.max(0, Number(v)));
-    const servings = Math.min(20, Math.max(1, Math.round(Number(f.servings.value) || 1)));
+    const servings = clampServings(Number(f.servings.value) || 1);
 
     const ingredients = [...el.ingRows.querySelectorAll(".row")]
       .map((row) => ({
