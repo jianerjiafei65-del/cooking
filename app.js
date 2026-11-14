@@ -155,6 +155,14 @@
     return String(n >= 100 ? Math.round(n) : round(n, 1));
   }
 
+  // 「大さじ2」のように単位を前に置く表記に対応
+  const PREFIX_UNITS = ["大さじ", "小さじ", "カップ"];
+  function formatQty(amount, unit) {
+    if (amount == null) return "適量";
+    const u = String(unit || "");
+    return PREFIX_UNITS.includes(u) ? `${u}${formatAmount(amount)}` : `${formatAmount(amount)}${u}`;
+  }
+
   function guessEmoji(name) {
     const map = [
       [/丼|ごはん|ご飯|炒飯|チャーハン|おにぎり|カレー/, "🍚"],
@@ -293,15 +301,15 @@
 
         <div class="panel">
           <h3>材料 <small>${viewServings}人分</small></h3>
+          ${r.ingredients.length ? `<p class="hint">材料をタップすると栄養の解説が見られます</p>` : ""}
           <ul class="ing-list">
-            ${r.ingredients.map((i) => `
+            ${r.ingredients.map((i, idx) => `
               <li>
-                <span>${escapeHtml(i.name)}</span>
-                <span class="ing-amount">${
-                  i.amount == null
-                    ? "適量"
-                    : `${formatAmount(i.amount * factor)}${escapeHtml(i.unit)}`
-                }</span>
+                <button type="button" class="ing-item${findIngredientInfo(i.name) ? " has-info" : ""}" data-idx="${idx}" aria-label="${escapeHtml(i.name)}の栄養解説を見る">
+                  <svg class="ing-info" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                  <span class="ing-name">${escapeHtml(i.name)}</span>
+                  <span class="ing-amount">${escapeHtml(formatQty(i.amount == null ? null : i.amount * factor, i.unit))}</span>
+                </button>
               </li>`).join("") || `<li class="muted">材料が登録されていません</li>`}
           </ul>
         </div>
@@ -350,10 +358,12 @@
   }
 
   el.detailView.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-act]");
-    if (!btn) return;
     const r = findRecipe(el.detailView.dataset.id);
     if (!r) return;
+    const ing = e.target.closest(".ing-item");
+    if (ing) { openIngredientInfo(r, Number(ing.dataset.idx)); return; }
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
     const act = btn.dataset.act;
 
     if (act === "minus" && viewServings > 1) { viewServings--; renderDetail(r); }
@@ -366,6 +376,127 @@
       go("#/");
     }
   });
+
+  /* ===== 材料の栄養解説 ===== */
+  const INFO = window.INGREDIENT_INFO || [];
+  const COMMON_UNITS = { g: 1, ml: 1, cc: 1, kg: 1000, l: 1000, "大さじ": 15, "小さじ": 5, "カップ": 200 };
+
+  // 材料名にもっとも長く一致するキーを持つデータを探す
+  function findIngredientInfo(name) {
+    const target = String(name).replace(/\s/g, "");
+    let best = null, bestLen = 0;
+    for (const info of INFO) {
+      for (const key of info.keys) {
+        if (key.length > bestLen && target.includes(key)) { best = info; bestLen = key.length; }
+      }
+    }
+    return best;
+  }
+
+  // 分量をグラムに換算（換算できなければ null）
+  function toGrams(info, amount, unit) {
+    if (amount == null) return null;
+    const u = String(unit || "").trim();
+    const perUnit = info.units?.[u] ?? COMMON_UNITS[u.toLowerCase()];
+    return perUnit ? amount * perUnit : null;
+  }
+
+  function openIngredientInfo(r, idx) {
+    const ing = r.ingredients[idx];
+    if (!ing) return;
+    const info = findIngredientInfo(ing.name);
+    const factor = viewServings / r.servings;
+    const amount = ing.amount == null ? null : ing.amount * factor;
+    const amountText = formatQty(amount, ing.unit);
+
+    let html;
+    if (!info) {
+      html = `
+        <div class="info-head">
+          <div class="info-emoji" aria-hidden="true">🔍</div>
+          <div>
+            <h2 id="infoTitle">${escapeHtml(ing.name)}</h2>
+            <p class="info-sub">このレシピで使う量：${escapeHtml(amountText)}</p>
+          </div>
+        </div>
+        <p>この材料の栄養データはまだ登録されていません。</p>
+        <p class="info-note">「じゃがいも」「鶏もも肉」「しょうゆ」など、一般的な名前で登録すると解説が表示されやすくなります。</p>`;
+    } else {
+      const p = info.per100;
+      const grams = toGrams(info, amount, ing.unit);
+      const scaled = (v, d = 1) => round((v * grams) / 100, d);
+      const sameName = info.name.replace(/（.*）/, "") === ing.name;
+
+      html = `
+        <div class="info-head">
+          <div class="info-emoji" aria-hidden="true">${info.emoji}</div>
+          <div>
+            <h2 id="infoTitle">${escapeHtml(ing.name)}</h2>
+            <p class="info-sub">${escapeHtml(info.category)}${sameName ? "" : `・「${escapeHtml(info.name)}」のデータで表示`}</p>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <h3>主な栄養素</h3>
+          <div class="tags">${info.highlights.map((h) => `<span class="tag">${escapeHtml(h)}</span>`).join("")}</div>
+        </div>
+
+        <div class="info-section">
+          <h3>栄養の解説</h3>
+          <p>${escapeHtml(info.desc)}</p>
+        </div>
+
+        ${grams != null ? `
+        <div class="info-section">
+          <h3>このレシピでの量（${viewServings}人分：${escapeHtml(amountText)}${ing.unit === "g" ? "" : ` ≒ ${Math.round(grams)}g`}）</h3>
+          ${miniGrid({ kcal: scaled(p.kcal, 0), protein: scaled(p.protein), fat: scaled(p.fat), carbs: scaled(p.carbs), salt: scaled(p.salt) })}
+        </div>` : ""}
+
+        <div class="info-section">
+          <h3>100gあたり</h3>
+          ${miniGrid(p)}
+        </div>
+
+        <div class="info-section">
+          <p class="tip">${escapeHtml(info.tip)}</p>
+        </div>
+
+        <p class="info-note">※数値は日本食品標準成分表（八訂）をもとにした目安です。品種・部位・調理法によって変わります。</p>`;
+    }
+
+    infoBody.innerHTML = html;
+    if (typeof infoSheet.showModal === "function") infoSheet.showModal();
+    else infoSheet.setAttribute("open", "");
+    infoSheet.scrollTop = 0;
+  }
+
+  function miniGrid(n) {
+    const items = [
+      ["エネルギー", n.kcal, "kcal", true],
+      ["たんぱく質", n.protein, "g"],
+      ["脂質", n.fat, "g"],
+      ["炭水化物", n.carbs, "g"],
+      ["食塩", n.salt, "g"]
+    ];
+    return `<div class="mini-grid">${items.map(([label, v, unit, main]) => `
+      <div class="mini${main ? " mini-kcal" : ""}"><b>${v}</b><span>${label}<br>(${unit})</span></div>`).join("")}</div>`;
+  }
+
+  const infoSheet = $("#infoSheet");
+  const infoBody = $("#infoBody");
+  function closeInfo() {
+    if (typeof infoSheet.close === "function") infoSheet.close();
+    else infoSheet.removeAttribute("open");
+  }
+  $("#infoClose").addEventListener("click", closeInfo);
+  // シートの外側（背景）をタップしたら閉じる
+  infoSheet.addEventListener("click", (e) => {
+    if (e.target !== infoSheet) return;
+    const b = infoSheet.getBoundingClientRect();
+    if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) closeInfo();
+  });
+  // 画面が切り替わったら閉じる
+  window.addEventListener("hashchange", closeInfo);
 
   /* ===== 編集フォーム ===== */
   const ICON_DEL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
