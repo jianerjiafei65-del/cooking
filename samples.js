@@ -4,7 +4,7 @@
  */
 window.SAMPLE_RECIPES = [
   {
-    id: "sample_nikujaga", emoji: "🥔",
+    id: "sample_nikujaga", category: "main", emoji: "🥔",
     name: "肉じゃが",
     servings: 2,
     ingredients: [
@@ -26,7 +26,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "sample_oyakodon", emoji: "🍚",
+    id: "sample_oyakodon", category: "staple", emoji: "🍚",
     name: "親子丼",
     servings: 2,
     ingredients: [
@@ -47,7 +47,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "sample_salad", emoji: "🥗",
+    id: "sample_salad", category: "side", emoji: "🥗",
     name: "アボカドとトマトのサラダ",
     servings: 2,
     ingredients: [
@@ -66,7 +66,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "sample_misosoup", emoji: "🍲",
+    id: "sample_misosoup", category: "soup", emoji: "🍲",
     name: "豆腐とわかめの味噌汁",
     servings: 2,
     ingredients: [
@@ -86,7 +86,7 @@ window.SAMPLE_RECIPES = [
 
   /* ---------- 和食20品 ---------- */
   {
-    id: "washoku_w01", name: "豚の生姜焼き", emoji: "🐖", servings: 2,
+    id: "washoku_w01", category: "main", name: "豚の生姜焼き", emoji: "🐖", servings: 2,
     ingredients: [
       { name: "豚ロース薄切り肉", amount: 200, unit: "g" },
       { name: "玉ねぎ", amount: 0.5, unit: "個" },
@@ -106,7 +106,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w02", name: "鶏の照り焼き", emoji: "🍗", servings: 2,
+    id: "washoku_w02", category: "main", name: "鶏の照り焼き", emoji: "🍗", servings: 2,
     ingredients: [
       { name: "鶏もも肉", amount: 1, unit: "枚" },
       { name: "しょうゆ", amount: 2, unit: "大さじ" },
@@ -124,7 +124,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w03", name: "さばの味噌煮", emoji: "🐟", servings: 2,
+    id: "washoku_w03", category: "main", name: "さばの味噌煮", emoji: "🐟", servings: 2,
     ingredients: [
       { name: "さば", amount: 2, unit: "切れ" },
       { name: "しょうが", amount: 1, unit: "片" },
@@ -143,7 +143,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w04", name: "鮭の塩焼き", emoji: "🐟", servings: 2,
+    id: "washoku_w04", category: "main", name: "鮭の塩焼き", emoji: "🐟", servings: 2,
     ingredients: [
       { name: "生鮭", amount: 2, unit: "切れ" },
       { name: "塩", amount: 1, unit: "g" },
@@ -159,7 +159,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w05", name: "ぶり大根", emoji: "🐟", servings: 2,
+    id: "washoku_w05", category: "main", name: "ぶり大根", emoji: "🐟", servings: 2,
     ingredients: [
       { name: "ぶり", amount: 2, unit: "切れ" },
       { name: "大根", amount: 10, unit: "cm" },
@@ -179,7 +179,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w06", name: "筑前煮", emoji: "🥕", servings: 3,
+    id: "washoku_w06", category: "side", name: "筑前煮", emoji: "🥕", servings: 3,
     ingredients: [
       { name: "鶏もも肉", amount: 150, unit: "g" },
       { name: "ごぼう", amount: 0.5, unit: "本" },
@@ -202,7 +202,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w07", name: "きんぴらごぼう", emoji: "🥢", servings: 2,
+    id: "washoku_w07", category: "side", name: "きんぴらごぼう", emoji: "🥢", servings: 2,
     ingredients: [
       { name: "ごぼう", amount: 1, unit: "本" },
       { name: "にんじん", amount: 0.3, unit: "本" },
@@ -221,7 +221,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w08", name: "ほうれん草のおひたし", emoji: "🥬", servings: 2,
+    id: "washoku_w08", category: "side", name: "ほうれん草のおひたし", emoji: "🥬", servings: 2,
     ingredients: [
       { name: "ほうれん草", amount: 1, unit: "束" },
       { name: "だし汁", amount: 2, unit: "大さじ" },
@@ -237,7 +237,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w09", name: "だし巻き卵", emoji: "🍳", servings: 2,
+    id: "washoku_w09", category: "side", name: "だし巻き卵", emoji: "🍳", servings: 2,
     ingredients: [
       { name: "卵", amount: 3, unit: "個" },
       { name: "だし汁", amount: 3, unit: "大さじ" },
@@ -255,7 +255,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w10", name: "豚汁", emoji: "🍲", servings: 3,
+    id: "washoku_w10", category: "soup", name: "豚汁", emoji: "🍲", servings: 3,
     ingredients: [
       { name: "豚バラ薄切り肉", amount: 100, unit: "g" },
       { name: "大根", amount: 4, unit: "cm" },
@@ -276,7 +276,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w11", name: "牛丼", emoji: "🍚", servings: 2,
+    id: "washoku_w11", category: "staple", name: "牛丼", emoji: "🍚", servings: 2,
     ingredients: [
       { name: "牛こま切れ肉", amount: 200, unit: "g" },
       { name: "玉ねぎ", amount: 1, unit: "個" },
@@ -297,7 +297,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w12", name: "鶏の唐揚げ", emoji: "🍗", servings: 2,
+    id: "washoku_w12", category: "main", name: "鶏の唐揚げ", emoji: "🍗", servings: 2,
     ingredients: [
       { name: "鶏もも肉", amount: 300, unit: "g" },
       { name: "しょうゆ", amount: 1.5, unit: "大さじ" },
@@ -317,7 +317,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w13", name: "揚げ出し豆腐", emoji: "⬜", servings: 2,
+    id: "washoku_w13", category: "side", name: "揚げ出し豆腐", emoji: "⬜", servings: 2,
     ingredients: [
       { name: "木綿豆腐", amount: 1, unit: "丁" },
       { name: "片栗粉", amount: 2, unit: "大さじ" },
@@ -337,7 +337,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w14", name: "かぼちゃの煮物", emoji: "🎃", servings: 2,
+    id: "washoku_w14", category: "side", name: "かぼちゃの煮物", emoji: "🎃", servings: 2,
     ingredients: [
       { name: "かぼちゃ", amount: 300, unit: "g" },
       { name: "だし汁", amount: 200, unit: "ml" },
@@ -354,7 +354,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w15", name: "ひじきの煮物", emoji: "🌿", servings: 4,
+    id: "washoku_w15", category: "side", name: "ひじきの煮物", emoji: "🌿", servings: 4,
     ingredients: [
       { name: "乾燥ひじき", amount: 15, unit: "g" },
       { name: "にんじん", amount: 0.3, unit: "本" },
@@ -375,7 +375,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w16", name: "きゅうりとわかめの酢の物", emoji: "🥒", servings: 2,
+    id: "washoku_w16", category: "side", name: "きゅうりとわかめの酢の物", emoji: "🥒", servings: 2,
     ingredients: [
       { name: "きゅうり", amount: 1, unit: "本" },
       { name: "乾燥わかめ", amount: 2, unit: "g" },
@@ -394,7 +394,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w17", name: "茶碗蒸し", emoji: "🥚", servings: 2,
+    id: "washoku_w17", category: "side", name: "茶碗蒸し", emoji: "🥚", servings: 2,
     ingredients: [
       { name: "卵", amount: 1, unit: "個" },
       { name: "だし汁", amount: 200, unit: "ml" },
@@ -415,7 +415,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w18", name: "鶏ごぼうの炊き込みご飯", emoji: "🍚", servings: 4,
+    id: "washoku_w18", category: "staple", name: "鶏ごぼうの炊き込みご飯", emoji: "🍚", servings: 4,
     ingredients: [
       { name: "米", amount: 2, unit: "合" },
       { name: "鶏もも肉", amount: 100, unit: "g" },
@@ -437,7 +437,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w19", name: "ざるそば", emoji: "🍜", servings: 2,
+    id: "washoku_w19", category: "staple", name: "ざるそば", emoji: "🍜", servings: 2,
     ingredients: [
       { name: "そば（乾麺）", amount: 200, unit: "g" },
       { name: "めんつゆ（3倍濃縮）", amount: 4, unit: "大さじ" },
@@ -455,7 +455,7 @@ window.SAMPLE_RECIPES = [
     ]
   },
   {
-    id: "washoku_w20", name: "鶏つくね", emoji: "🍢", servings: 2,
+    id: "washoku_w20", category: "main", name: "鶏つくね", emoji: "🍢", servings: 2,
     ingredients: [
       { name: "鶏ひき肉", amount: 250, unit: "g" },
       { name: "長ねぎ", amount: 0.5, unit: "本" },

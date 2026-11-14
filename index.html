@@ -23,6 +23,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input type="search" id="searchInput" placeholder="料理名・材料で検索" aria-label="レシピを検索">
       </div>
+      <div class="tabs" id="categoryTabs" role="tablist" aria-label="料理の分類"></div>
       <p class="count" id="recipeCount"></p>
       <ul class="card-grid" id="recipeList"></ul>
       <p class="empty" id="emptyMsg" hidden>レシピが見つかりません</p>
@@ -43,6 +44,11 @@
           <span>何人分</span>
           <input type="number" name="servings" min="1" max="20" value="2" inputmode="numeric">
         </label>
+
+        <fieldset class="field">
+          <legend class="field-legend">分類</legend>
+          <div class="seg" id="categoryChoices"></div>
+        </fieldset>
 
         <fieldset class="group">
           <legend>材料と分量</legend>

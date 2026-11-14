@@ -9,6 +9,35 @@
   // 最初のバージョンから入っていたサンプル（以前から使っている人の判定用）
   const ORIGINAL_SAMPLE_IDS = ["sample_nikujaga", "sample_oyakodon", "sample_salad", "sample_misosoup"];
 
+  /* ===== 分類 ===== */
+  const CATEGORIES = [
+    { id: "main", label: "主菜", emoji: "🍖" },
+    { id: "side", label: "副菜", emoji: "🥗" },
+    { id: "soup", label: "汁物", emoji: "🍲" },
+    { id: "staple", label: "ごはん・麺", emoji: "🍚" },
+    { id: "other", label: "その他", emoji: "🍽️" }
+  ];
+  const TAB_KEY = "ouchi-recipes-tab";
+  const categoryLabel = (id) => CATEGORIES.find((c) => c.id === id)?.label ?? "その他";
+
+  // 料理名から分類を推測（分類が未設定の古いデータ用）
+  function guessCategory(name) {
+    if (/汁|スープ|ポタージュ|シチュー/.test(name)) return "soup";
+    if (/丼|ごはん|ご飯|飯|カレー|そば|うどん|ラーメン|パスタ|スパゲ|麺|寿司|おにぎり|チャーハン|パン|焼きそば|お好み焼き/.test(name)) return "staple";
+    if (/サラダ|和え|おひたし|煮物|酢の物|きんぴら|漬け|ナムル|浅漬け|マリネ/.test(name)) return "side";
+    if (/焼き|揚げ|フライ|ステーキ|ハンバーグ|煮付け|炒め|カツ|天ぷら|つくね|照り焼き|煮込み/.test(name)) return "main";
+    return "other";
+  }
+
+  function getCategory(r) {
+    if (r.category && CATEGORIES.some((c) => c.id === r.category)) return r.category;
+    const sample = SAMPLE_RECIPES.find((x) => x.id === r.id);
+    return sample?.category || guessCategory(r.name);
+  }
+
+  let currentTab = "all";
+  try { currentTab = localStorage.getItem(TAB_KEY) || "all"; } catch (e) { /* noop */ }
+
   /* ===== 状態 ===== */
   let recipes = load();
   let viewServings = null; // 詳細画面で表示中の人数
@@ -23,6 +52,8 @@
     detailView: $("#detailView"),
     editView: $("#editView"),
     search: $("#searchInput"),
+    tabs: $("#categoryTabs"),
+    catChoices: $("#categoryChoices"),
     list: $("#recipeList"),
     count: $("#recipeCount"),
     empty: $("#emptyMsg"),
@@ -168,19 +199,38 @@
     el.listView.hidden = false;
 
     const q = el.search.value.trim().toLowerCase();
-    const filtered = recipes.filter((r) =>
+    const matched = recipes.filter((r) =>
       !q ||
       r.name.toLowerCase().includes(q) ||
       r.ingredients.some((i) => i.name.toLowerCase().includes(q))
     );
 
+    // タブ（件数は検索結果に連動）
+    const counts = { all: matched.length };
+    CATEGORIES.forEach((c) => { counts[c.id] = 0; });
+    matched.forEach((r) => { counts[getCategory(r)]++; });
+    const hasOther = recipes.some((r) => getCategory(r) === "other");
+    const tabs = [{ id: "all", label: "すべて" }, ...CATEGORIES.filter((c) => c.id !== "other" || hasOther)];
+    if (!tabs.some((t) => t.id === currentTab)) currentTab = "all";
+
+    el.tabs.innerHTML = tabs.map((t) => `
+      <button type="button" class="tab" role="tab" data-tab="${t.id}"
+        aria-selected="${t.id === currentTab}" tabindex="${t.id === currentTab ? 0 : -1}">
+        ${t.label}<span class="tab-count">${counts[t.id]}</span>
+      </button>`).join("");
+
+    const filtered = currentTab === "all" ? matched : matched.filter((r) => getCategory(r) === currentTab);
+    const tabLabel = currentTab === "all" ? "" : `${categoryLabel(currentTab)}：`;
+
     el.count.textContent = q
-      ? `${filtered.length}件 / 全${recipes.length}件`
-      : `全${recipes.length}件のレシピ`;
+      ? `${tabLabel}${filtered.length}件 / 全${recipes.length}件`
+      : `${tabLabel}${filtered.length}件のレシピ`;
     el.empty.hidden = filtered.length > 0;
     el.empty.textContent = recipes.length === 0
       ? "レシピがまだありません。右下の ＋ から追加しましょう。"
-      : "レシピが見つかりません";
+      : q ? "レシピが見つかりません" : `${categoryLabel(currentTab)}のレシピはまだありません`;
+
+    el.tabs.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
 
     el.list.innerHTML = filtered.map((r) => {
       const perKcal = r.nutrition?.kcal ? Math.round(r.nutrition.kcal / r.servings) : null;
@@ -191,6 +241,7 @@
             <span class="card-body">
               <p class="card-title">${escapeHtml(r.name)}</p>
               <span class="card-meta">
+                ${currentTab === "all" ? `<span class="chip chip-cat">${categoryLabel(getCategory(r))}</span>` : ""}
                 ${perKcal !== null ? `<span class="chip chip-accent">${perKcal} kcal/人</span>` : ""}
                 <span class="chip">${r.servings}人分</span>
                 <span class="chip">材料 ${r.ingredients.length}品</span>
@@ -236,6 +287,7 @@
         <div class="hero">
           <div class="hero-emoji" aria-hidden="true">${r.emoji || guessEmoji(r.name)}</div>
           <h2>${escapeHtml(r.name)}</h2>
+          <span class="hero-cat">${categoryLabel(getCategory(r))}</span>
         </div>
 
         <div class="panel">
@@ -652,6 +704,12 @@
     f.dishName.value = r?.name ?? "";
     f.dishName.classList.remove("invalid");
     f.servings.value = r?.servings ?? 2;
+    const cat = r ? getCategory(r) : (currentTab !== "all" ? currentTab : "main");
+    el.catChoices.innerHTML = CATEGORIES.map((c) => `
+      <label class="seg-item">
+        <input type="radio" name="category" value="${c.id}" ${c.id === cat ? "checked" : ""}>
+        <span>${c.emoji} ${c.label}</span>
+      </label>`).join("");
     const n = r?.nutrition ?? {};
     ["kcal", "protein", "fat", "carbs", "salt"].forEach((k) => { f[k].value = n[k] ?? ""; });
 
@@ -720,7 +778,8 @@
 
     const id = el.form.dataset.id || `r_${Date.now()}`;
     const prev = findRecipe(id);
-    const recipe = { id, name, servings, ingredients, nutrition, steps };
+    const category = el.form.querySelector('input[name="category"]:checked')?.value || "other";
+    const recipe = { id, name, category, servings, ingredients, nutrition, steps };
     // 料理名を変えていなければ、元の絵文字を引き継ぐ
     if (prev?.emoji && prev.name === name) recipe.emoji = prev.emoji;
 
@@ -740,6 +799,26 @@
   });
 
   el.search.addEventListener("input", renderList);
+
+  function selectTab(id) {
+    currentTab = id;
+    try { localStorage.setItem(TAB_KEY, id); } catch (e) { /* noop */ }
+    renderList();
+    el.tabs.querySelector(`[data-tab="${id}"]`)?.focus();
+  }
+  el.tabs.addEventListener("click", (e) => {
+    const tab = e.target.closest("[data-tab]");
+    if (tab) selectTab(tab.dataset.tab);
+  });
+  // 左右キーでタブを移動
+  el.tabs.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const ids = [...el.tabs.querySelectorAll("[data-tab]")].map((t) => t.dataset.tab);
+    const i = ids.indexOf(currentTab);
+    const next = ids[(i + (e.key === "ArrowRight" ? 1 : -1) + ids.length) % ids.length];
+    e.preventDefault();
+    selectTab(next);
+  });
   el.add.addEventListener("click", () => go("#/new"));
   el.back.addEventListener("click", goUp);
   el.form.elements.dishName.addEventListener("input", () => {
