@@ -215,12 +215,12 @@
   function setHeader(title, showBack) {
     el.title.textContent = title;
     el.back.hidden = !showBack;
-    document.title = showBack ? `${title} | おうちレシピ帖` : "おうちレシピ帖";
+    document.title = showBack ? `${title} | 今日の献立` : "今日の献立";
   }
 
   /* ===== 一覧 ===== */
   function renderList() {
-    setHeader("おうちレシピ帖", false);
+    setHeader("今日の献立", false);
     el.add.hidden = false;
     el.listView.hidden = false;
 
