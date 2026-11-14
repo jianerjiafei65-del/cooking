@@ -380,6 +380,7 @@
               <span><i style="background:var(--c)"></i>炭水化物 ${pct(cE)}%</span>
             </div>
           </div>` : ""}
+          ${microSection(r, per(n.carbs), recipeCtx)}
         </div>
 
         <div class="panel">
@@ -620,6 +621,81 @@
   }
 
   // レシピの材料から、その栄養素を多く含む材料を推定（1人分）
+  /* ===== ミネラル・ビタミン・その他（材料データからの推定） ===== */
+  const MICRO_FIELDS = window.MICRO_FIELDS || [];
+  const MICRO_INFO = window.MICRO_INFO || {};
+  const MICRO_GROUPS = [
+    { label: "ミネラル", items: [["k", "mg"], ["ca", "mg"], ["mg", "mg"], ["fe", "mg"], ["zn", "mg"]] },
+    { label: "ビタミン", items: [["vA", "μg"], ["vD", "μg"], ["vE", "mg"], ["vK", "μg"], ["vB1", "mg"], ["vB2", "mg"], ["nia", "mg"], ["vB6", "mg"], ["vB12", "μg"], ["fol", "μg"], ["vC", "mg"]] },
+    { label: "その他", items: [["fiber", "g"], ["sugar", "g"], ["chol", "mg"]] }
+  ];
+  const NUTRIENT_UNITS = { kcal: "kcal", protein: "g", fat: "g", carbs: "g", salt: "g", sugar: "g" };
+  MICRO_GROUPS.forEach((g) => g.items.forEach(([id, unit]) => { NUTRIENT_UNITS[id] = unit; }));
+
+  // 材料データの100gあたりの値（三大栄養素などは ingredients.js、それ以外は micronutrients.js）
+  function per100Of(info, id) {
+    if (info.per100[id] != null) return info.per100[id];
+    const row = MICRO_INFO[info.name];
+    const idx = MICRO_FIELDS.indexOf(id);
+    return row && idx >= 0 ? row[idx] : null;
+  }
+
+  // レシピ1人分のミネラル・ビタミン等を推定
+  function estimateMicro(r) {
+    const total = {};
+    MICRO_FIELDS.forEach((f) => { total[f] = 0; });
+    let counted = 0, skipped = 0;
+    r.ingredients.forEach((ing) => {
+      if (ing.amount == null) return;
+      const info = findIngredientInfo(ing.name);
+      const g = info ? toGrams(info, ing.amount, ing.unit) : null;
+      if (!info || g == null || !MICRO_INFO[info.name]) { skipped++; return; }
+      counted++;
+      MICRO_FIELDS.forEach((f) => { total[f] += (per100Of(info, f) * g) / 100; });
+    });
+    const perPerson = {};
+    MICRO_FIELDS.forEach((f) => { perPerson[f] = total[f] / r.servings; });
+    return { perPerson, counted, skipped };
+  }
+
+  function fmtMicro(v, unit) {
+    if (unit === "g") return round(v, 1);
+    return v >= 10 ? Math.round(v) : round(v, v >= 1 ? 1 : 2);
+  }
+
+  function microSection(r, carbsPer, ctx) {
+    if (!MICRO_FIELDS.length) return "";
+    const { perPerson, counted, skipped } = estimateMicro(r);
+    if (!counted) return "";
+    const values = { ...perPerson };
+    values.sugar = carbsPer != null ? Math.max(0, carbsPer - perPerson.fiber) : null;
+    const groups = MICRO_GROUPS.map((grp) => `
+      <div class="micro-group">
+        <h4>${grp.label}</h4>
+        <ul class="micro-list">${grp.items.map(([id, unit]) => {
+          const nu = NUTRIENTS.find((x) => x.id === id);
+          const v = values[id];
+          if (!nu || v == null) return "";
+          const shown = fmtMicro(v, unit);
+          const pct = nu.dv ? Math.round((v / nu.dv.value) * 100) : null;
+          return `
+            <li>
+              <button type="button" class="micro-item" ${nutrientAttrs(id, shown, ctx, true)}>
+                <span class="micro-name">${escapeHtml(nu.name)}</span>
+                <span class="micro-bar">${pct != null ? `<span style="width:${Math.min(pct, 100)}%"></span>` : ""}</span>
+                <span class="micro-val">${shown}<small>${unit}</small></span>
+                <span class="micro-pct">${pct != null ? `${pct}%` : "—"}</span>
+              </button>
+            </li>`;
+        }).join("")}</ul>
+      </div>`).join("");
+    return `
+      <div class="micro">
+        ${groups}
+        <p class="micro-note">※ミネラル・ビタミン・その他は、材料データと分量から推定した1人分の目安です。％は1日の基準値（栄養素等表示基準値）に対する割合です。${skipped ? `分量が「適量」の材料や、データのない材料（${skipped}品）は含みません。` : ""}</p>
+      </div>`;
+  }
+
   function contributors(r, id) {
     const list = [];
     r.ingredients.forEach((ing, idx) => {
@@ -627,14 +703,16 @@
       if (!info) return;
       const g = toGrams(info, ing.amount, ing.unit);
       if (g == null) return;
-      const v = (info.per100[id] * g) / 100 / r.servings;
+      const p = per100Of(info, id);
+      if (p == null) return;
+      const v = (p * g) / 100 / r.servings;
       if (v > 0) list.push({ idx, name: ing.name, v });
     });
     return list.sort((a, b) => b.v - a.v).slice(0, 3);
   }
 
   function openNutrientInfo(nu, { value = null, ctx = "", recipe = null } = {}, push = true) {
-    const unit = nu.dv?.unit || (nu.id === "kcal" ? "kcal" : "g");
+    const unit = nu.dv?.unit || NUTRIENT_UNITS[nu.id] || "g";
     let amountBox = "";
     if (value != null && ctx) {
       const pct = nu.dv ? Math.round((value / nu.dv.value) * 100) : null;
@@ -649,7 +727,7 @@
     }
 
     let contribHtml = "";
-    if (recipe && MACRO_IDS.includes(nu.id)) {
+    if (recipe && nu.id && nu.id !== "sugar" && (MACRO_IDS.includes(nu.id) || MICRO_FIELDS.includes(nu.id))) {
       const list = contributors(recipe, nu.id);
       if (list.length) {
         const max = list[0].v;
@@ -661,7 +739,7 @@
               <button type="button" class="contrib-item" data-ing-idx="${c.idx}">
                 <span class="contrib-name">${escapeHtml(c.name)}</span>
                 <span class="contrib-bar"><span style="width:${Math.max(6, (c.v / max) * 100)}%"></span></span>
-                <span class="contrib-val">${round(c.v, nu.id === "kcal" ? 0 : 1)}${unit}</span>
+                <span class="contrib-val">${nu.id === "kcal" ? Math.round(c.v) : MICRO_FIELDS.includes(nu.id) ? fmtMicro(c.v, unit) : round(c.v, 1)}${unit}</span>
               </button>
             </li>`).join("")}
           </ul>
