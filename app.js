@@ -420,6 +420,8 @@
     if (ing) { openIngredientInfo(r, Number(ing.dataset.idx)); return; }
     const nut = e.target.closest("[data-nid]");
     if (nut) { openNutrientFromEl(nut, r, false); return; }
+    const grpBtn = e.target.closest("[data-group]");
+    if (grpBtn) { openGroupInfo(grpBtn.dataset.group, r); return; }
     const serv = e.target.closest("[data-serv]");
     if (serv) {
       setServings(r, Number(serv.dataset.serv));
@@ -625,10 +627,46 @@
   const MICRO_FIELDS = window.MICRO_FIELDS || [];
   const MICRO_INFO = window.MICRO_INFO || {};
   const MICRO_GROUPS = [
-    { label: "ミネラル", items: [["k", "mg"], ["ca", "mg"], ["mg", "mg"], ["fe", "mg"], ["zn", "mg"]] },
-    { label: "ビタミン", items: [["vA", "μg"], ["vD", "μg"], ["vE", "mg"], ["vK", "μg"], ["vB1", "mg"], ["vB2", "mg"], ["nia", "mg"], ["vB6", "mg"], ["vB12", "μg"], ["fol", "μg"], ["vC", "mg"]] },
-    { label: "その他", items: [["fiber", "g"], ["sugar", "g"], ["chol", "mg"]] }
+    { id: "mineral", label: "ミネラル", items: [["k", "mg"], ["ca", "mg"], ["mg", "mg"], ["fe", "mg"], ["zn", "mg"]] },
+    { id: "vitamin", label: "ビタミン", items: [["vA", "μg"], ["vD", "μg"], ["vE", "mg"], ["vK", "μg"], ["vB1", "mg"], ["vB2", "mg"], ["nia", "mg"], ["vB6", "mg"], ["vB12", "μg"], ["fol", "μg"], ["vC", "mg"]] },
+    { id: "other", label: "その他", items: [["fiber", "g"], ["sugar", "g"], ["chol", "mg"]] }
   ];
+  // 分類ごとの解説
+  const GROUP_INFO = {
+    mineral: {
+      title: "ミネラルとは", emoji: "🪨",
+      lead: "骨や血液の材料になり、体の調子を整える無機質。体内で作れないため食事からとる必要があります。",
+      sections: [
+        ["どんな栄養素？", "ミネラルは、体をつくる元素のうち炭素・水素・酸素・窒素以外のものの総称で、「無機質」とも呼ばれます。体重の約4%にすぎませんが、体内では作れないため、毎日の食事からとる必要があります。"],
+        ["体での働き", "大きく3つの役割があります。①カルシウムやマグネシウムのように骨や歯をつくる、②鉄のように血液の成分になる、③カリウムやナトリウムのように体の水分バランスや神経・筋肉の働きを調整する。亜鉛のように酵素の働きを助けるものもあります。"],
+        ["種類", "1日の必要量が100mg以上の「多量ミネラル」（カルシウム・カリウム・マグネシウム・ナトリウム・リン）と、それより少ない「微量ミネラル」（鉄・亜鉛・銅・ヨウ素など）に分けられます。"],
+        ["日本人の傾向", "カルシウムと鉄は不足しがちで、特に女性は鉄が足りなくなりやすい傾向があります。反対にナトリウム（食塩）はとりすぎの人が多く、カリウムをしっかりとると余分なナトリウムの排出を助けます。"]
+      ],
+      tip: "ミネラルは組み合わせで吸収が変わります。鉄はビタミンCや肉・魚と、カルシウムはビタミンD（魚・きのこ）と一緒にとると吸収されやすくなります。海藻・大豆製品・乳製品・緑黄色野菜を毎日少しずつ取り入れましょう。"
+    },
+    vitamin: {
+      title: "ビタミンとは", emoji: "🍊",
+      lead: "ほかの栄養素の働きを助け、体の調子を整える成分。油に溶ける脂溶性と、水に溶ける水溶性があります。",
+      sections: [
+        ["どんな栄養素？", "ビタミンは、ごく少ない量で体の調子を整える有機化合物で、全部で13種類あります。たんぱく質・脂質・炭水化物のようにエネルギーや体の材料にはなりませんが、それらがうまく働くための「潤滑油」の役割をします。ほとんどは体内で作れないか、作れても足りません。"],
+        ["脂溶性ビタミン（A・D・E・K）", "油に溶けやすく、油と一緒に食べると吸収がよくなります。肝臓などにためておけるので毎日きっちりとる必要はありませんが、サプリメントなどでとりすぎると体にたまり、過剰症が起こることがあります。"],
+        ["水溶性ビタミン（B群8種類・C）", "水に溶けやすく、熱に弱いものが多いのが特徴です。とりすぎても尿として出ていく一方、体にためておけないため、毎日こまめにとる必要があります。B群は糖質・脂質・たんぱく質をエネルギーに変えるのを助け、Cはコラーゲンづくりや抗酸化に働きます。"],
+        ["日本人の傾向", "野菜や果物が少ない食事では、ビタミンCや葉酸、β-カロテンが不足しがちです。日光に当たる機会が少ない人はビタミンDも不足しやすくなります。"]
+      ],
+      tip: "脂溶性ビタミンの多い緑黄色野菜は炒め物やごま和えに。水溶性ビタミンはゆでるより蒸す・電子レンジ加熱にするか、スープや煮物で汁ごといただくと無駄なくとれます。"
+    },
+    other: {
+      title: "その他の栄養素", emoji: "🌾",
+      lead: "お腹の調子を整える食物繊維、エネルギー源の糖質、細胞やホルモンの材料になるコレステロールです。",
+      sections: [
+        ["食物繊維", "消化されずに大腸まで届く成分で、「第6の栄養素」とも呼ばれます。便通を整え、腸内の善玉菌を増やし、血糖値やコレステロールの上昇をゆるやかにします。日本人の多くは目標量に届いていません。"],
+        ["糖質", "炭水化物から食物繊維を除いたもので、体と脳のすばやいエネルギー源です。このアプリでは、炭水化物の値から材料データで推定した食物繊維を引いて求めています。"],
+        ["コレステロール", "細胞膜やホルモン、胆汁酸、ビタミンDの材料になる脂質の一種です。多くは肝臓で作られ、食事からの量は一部です。卵黄・レバー・魚卵・えびなどに多く含まれます。"]
+      ],
+      tip: "食物繊維は、きのこ・海藻・ごぼう・豆類・いも類を献立に1品加えると増やしやすくなります。主食を玄米や雑穀ごはんにするのも手軽な方法です。"
+    }
+  };
+
   const NUTRIENT_UNITS = { kcal: "kcal", protein: "g", fat: "g", carbs: "g", salt: "g", sugar: "g" };
   MICRO_GROUPS.forEach((g) => g.items.forEach(([id, unit]) => { NUTRIENT_UNITS[id] = unit; }));
 
@@ -663,15 +701,24 @@
     return v >= 10 ? Math.round(v) : round(v, v >= 1 ? 1 : 2);
   }
 
+  function microValues(r) {
+    const { perPerson, counted, skipped } = estimateMicro(r);
+    const values = { ...perPerson };
+    const carbs = r.nutrition?.carbs;
+    values.sugar = carbs != null && carbs !== "" ? Math.max(0, carbs / r.servings - perPerson.fiber) : null;
+    return { values, counted, skipped };
+  }
+
   function microSection(r, carbsPer, ctx) {
     if (!MICRO_FIELDS.length) return "";
-    const { perPerson, counted, skipped } = estimateMicro(r);
+    const { values, counted, skipped } = microValues(r);
     if (!counted) return "";
-    const values = { ...perPerson };
-    values.sugar = carbsPer != null ? Math.max(0, carbsPer - perPerson.fiber) : null;
     const groups = MICRO_GROUPS.map((grp) => `
       <div class="micro-group">
-        <h4>${grp.label}</h4>
+        <button type="button" class="micro-head" data-group="${grp.id}" aria-label="${grp.label}の解説を見る">
+          <span>${grp.label}</span><span class="micro-head-more">とは ›</span>
+        </button>
+        <p class="micro-lead">${GROUP_INFO[grp.id].lead}</p>
         <ul class="micro-list">${grp.items.map(([id, unit]) => {
           const nu = NUTRIENTS.find((x) => x.id === id);
           const v = values[id];
@@ -694,6 +741,55 @@
         ${groups}
         <p class="micro-note">※ミネラル・ビタミン・その他は、材料データと分量から推定した1人分の目安です。％は1日の基準値（栄養素等表示基準値）に対する割合です。${skipped ? `分量が「適量」の材料や、データのない材料（${skipped}品）は含みません。` : ""}</p>
       </div>`;
+  }
+
+  // 「ミネラルとは」などの分類の解説
+  function openGroupInfo(groupId, r) {
+    const grp = MICRO_GROUPS.find((g) => g.id === groupId);
+    const info = GROUP_INFO[groupId];
+    if (!grp || !info) return;
+    const { values } = microValues(r);
+    const ctx = `「${r.name}」1人分`;
+    const rows = grp.items.map(([id, unit]) => {
+      const nu = NUTRIENTS.find((x) => x.id === id);
+      if (!nu) return "";
+      const v = values[id];
+      const shown = v == null ? null : fmtMicro(v, unit);
+      const pct = v != null && nu.dv ? Math.round((v / nu.dv.value) * 100) : null;
+      return `
+        <li>
+          <button type="button" class="group-item" ${nutrientAttrs(id, shown, ctx, true)}>
+            <span class="group-item-head">
+              <b>${escapeHtml(nu.name)}</b>
+              <span class="group-item-val">${shown != null ? `${shown}${unit}${pct != null ? `（${pct}%）` : ""}` : "—"}</span>
+            </span>
+            <span class="group-item-sum">${escapeHtml(nu.summary)}</span>
+          </button>
+        </li>`;
+    }).join("");
+    const html = `
+      <div class="info-head">
+        <div class="info-emoji" aria-hidden="true">${info.emoji}</div>
+        <div>
+          <h2 id="infoTitle">${escapeHtml(info.title)}</h2>
+          <p class="info-sub">栄養素の分類</p>
+        </div>
+      </div>
+      <p class="lead">${escapeHtml(info.lead)}</p>
+      ${info.sections.map(([h, t]) => `
+        <div class="info-section">
+          <h3>${escapeHtml(h)}</h3>
+          <p>${escapeHtml(t)}</p>
+        </div>`).join("")}
+      <div class="info-section">
+        <h3>このレシピの${escapeHtml(grp.label)} <small>1人分・タップで詳しい解説</small></h3>
+        <ul class="group-list">${rows}</ul>
+      </div>
+      <div class="info-section">
+        <p class="tip">${escapeHtml(info.tip)}</p>
+      </div>
+      <p class="info-note">※値は材料データと分量から推定した目安です。％は1日の基準値（栄養素等表示基準値）に対する割合です。</p>`;
+    showSheet(html, false);
   }
 
   function contributors(r, id) {

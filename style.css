@@ -317,7 +317,27 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 
 /* ミネラル・ビタミン・その他 */
 .micro { margin-top: 18px; display: grid; gap: 14px; }
-.micro-group h4 { margin: 0 0 4px; font-size: .85rem; color: var(--muted); letter-spacing: .04em; }
+.micro-head {
+  display: flex; align-items: baseline; gap: 6px; min-height: 36px; padding: 4px 6px; margin-left: -6px;
+  border: 0; border-radius: 8px; background: transparent;
+  font-size: .9rem; font-weight: 700; letter-spacing: .04em;
+}
+.micro-head-more { font-size: .78rem; font-weight: 700; color: var(--accent); letter-spacing: 0; }
+.micro-head:active { background: var(--surface-2); }
+@media (hover: hover) { .micro-head:hover { background: var(--surface-2); } }
+.micro-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.micro-lead { margin: 0 0 6px; font-size: .78rem; color: var(--muted); line-height: 1.5; }
+
+.group-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.group-item {
+  display: grid; gap: 2px; width: 100%; padding: 10px 12px;
+  border: 0; border-radius: 12px; background: var(--surface-2); text-align: left;
+}
+.group-item:active { filter: brightness(.96); }
+.group-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.group-item-head b::after { content: " ›"; color: var(--accent); }
+.group-item-val { font-size: .82rem; font-weight: 700; color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.group-item-sum { font-size: .8rem; color: var(--muted); line-height: 1.5; }
 .micro-list { list-style: none; margin: 0; padding: 0; }
 .micro-item {
   display: grid; grid-template-columns: minmax(0, 7.5em) 1fr 5.5em 2.8em; align-items: center; gap: 8px;
