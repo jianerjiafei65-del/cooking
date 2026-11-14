@@ -398,7 +398,18 @@
     const act = btn.dataset.act;
 
     if (act === "edit") go(`#/edit/${r.id}`);
-    if (act === "delete" && confirm(`「${r.name}」を削除しますか？`)) {
+    // 削除は2回タップで確定（ブラウザの確認ダイアログを使わない）
+    if (act === "delete" && !btn.classList.contains("confirming")) {
+      btn.classList.add("confirming");
+      btn.textContent = "もう一度押すと削除";
+      clearTimeout(btn._timer);
+      btn._timer = setTimeout(() => {
+        btn.classList.remove("confirming");
+        btn.textContent = "削除";
+      }, 3000);
+      return;
+    }
+    if (act === "delete") {
       recipes = recipes.filter((x) => x.id !== r.id);
       save();
       showToast("削除しました");

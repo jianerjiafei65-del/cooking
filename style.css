@@ -17,8 +17,9 @@
   color-scheme: light;
 }
 
+/* 端末の設定がダークのとき（明示的にライトが選ばれていなければ） */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1c1916;
     --surface: #26221e;
     --surface-2: #302b26;
@@ -31,6 +32,20 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
     color-scheme: dark;
   }
+}
+/* 明示的にダークが選ばれたとき */
+:root[data-theme="dark"] {
+  --bg: #1c1916;
+  --surface: #26221e;
+  --surface-2: #302b26;
+  --text: #f0e9e0;
+  --muted: #a99d90;
+  --line: #3a342e;
+  --accent: #e48659;
+  --accent-soft: #3d2b21;
+  --danger: #e0705c;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+  color-scheme: dark;
 }
 
 /* ===== ベース ===== */
@@ -308,6 +323,7 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .btn-primary:active { filter: brightness(.92); }
 .btn-outline { background: var(--surface); border-color: var(--line); }
 .btn-danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.btn-danger.confirming { background: var(--danger); color: #fff; }
 .btn-ghost { width: 100%; background: transparent; border: 1px dashed var(--line); color: var(--accent); margin-top: 6px; }
 
 .fab {
