@@ -41,6 +41,14 @@
   /* ===== 状態 ===== */
   let recipes = load();
   let viewServings = null; // 詳細画面で表示中の人数
+  const SERVINGS_KEY = "ouchi-recipes-servings";
+  const QUICK_SERVINGS = [1, 2, 3, 4];
+  // 1〜4人の切替ボタンで選んだ人数（どのレシピにも適用）
+  let preferredServings = null;
+  try {
+    const v = Number(localStorage.getItem(SERVINGS_KEY));
+    if (QUICK_SERVINGS.includes(v)) preferredServings = v;
+  } catch (e) { /* noop */ }
 
   /* ===== 要素 ===== */
   const $ = (sel) => document.querySelector(sel);
@@ -257,7 +265,7 @@
     setHeader(r.name, true);
     el.add.hidden = true;
     el.detailView.hidden = false;
-    if (viewServings === null || el.detailView.dataset.id !== r.id) viewServings = r.servings;
+    if (viewServings === null || el.detailView.dataset.id !== r.id) viewServings = preferredServings ?? r.servings;
     el.detailView.dataset.id = r.id;
 
     const factor = viewServings / r.servings;
@@ -291,11 +299,23 @@
         </div>
 
         <div class="panel">
-          <div class="stepper">
-            <button type="button" data-act="minus" aria-label="人数を減らす" ${viewServings <= 1 ? "disabled" : ""}>−</button>
-            <output aria-live="polite">${viewServings}人分</output>
-            <button type="button" data-act="plus" aria-label="人数を増やす" ${viewServings >= 20 ? "disabled" : ""}>＋</button>
+          <div class="serv-head">
+            <span class="serv-title">人数</span>
+            <output class="serv-now" aria-live="polite">${viewServings}人分</output>
           </div>
+          <div class="serv-row">
+            <button type="button" class="serv-step" data-act="minus" aria-label="人数を減らす" ${viewServings <= 1 ? "disabled" : ""}>−</button>
+            <div class="serv-seg" role="radiogroup" aria-label="人数を切り替える">
+              ${QUICK_SERVINGS.map((n) => `
+                <button type="button" class="serv-btn" role="radio" data-serv="${n}" aria-checked="${n === viewServings}">${n}人</button>`).join("")}
+            </div>
+            <button type="button" class="serv-step" data-act="plus" aria-label="人数を増やす" ${viewServings >= 20 ? "disabled" : ""}>＋</button>
+          </div>
+          <p class="serv-note">${
+            viewServings === r.servings
+              ? `元のレシピの分量（${r.servings}人分）です`
+              : `元のレシピ（${r.servings}人分）を${viewServings}人分に換算しています`
+          }</p>
         </div>
 
         <div class="panel">
@@ -364,6 +384,15 @@
     if (ing) { openIngredientInfo(r, Number(ing.dataset.idx)); return; }
     const nut = e.target.closest("[data-nid]");
     if (nut) { openNutrientFromEl(nut, r, false); return; }
+    const serv = e.target.closest("[data-serv]");
+    if (serv) {
+      viewServings = Number(serv.dataset.serv);
+      preferredServings = viewServings; // 次に開くレシピにも同じ人数を適用
+      try { localStorage.setItem(SERVINGS_KEY, String(viewServings)); } catch (err) { /* noop */ }
+      renderDetail(r);
+      el.detailView.querySelector(`[data-serv="${viewServings}"]`)?.focus();
+      return;
+    }
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
