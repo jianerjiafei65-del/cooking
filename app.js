@@ -214,6 +214,8 @@
 
   function setHeader(title, showBack) {
     el.title.textContent = title;
+    // トップ画面では画像に「今日の献立」があるので、見出しの文字は表示しない（読み上げ用には残す）
+    el.title.classList.toggle("sr-only", !showBack);
     el.back.hidden = !showBack;
     document.title = showBack ? `${title} | 今日の献立` : "今日の献立";
   }
