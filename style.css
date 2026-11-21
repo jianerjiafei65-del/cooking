@@ -94,6 +94,14 @@ main {
 }
 .icon-btn:active { background: var(--surface-2); }
 
+/* ===== トップ画像 ===== */
+.top-banner {
+  display: block; width: 100%; max-width: 640px; height: auto;
+  aspect-ratio: 600 / 338; object-fit: cover;
+  margin: 0 auto 14px; border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
 /* ===== 検索 ===== */
 .search {
   position: relative;
